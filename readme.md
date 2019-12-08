@@ -76,4 +76,29 @@ download this repository of code somewhere on your system, and run:
 cargo run --
 ```
 
+## Cross-compiling
+
+Because respectable folk develop on respectable OSes we
+need to use a cross-compiler for Windorks.
+
+```
+rustup target add x86_64-pc-windows-gnu
+
+# Arch linux only; Sorry. go trip over your package manager's 20-year-old documentation.
+yay -S mingw-w64-gcc
+
+# Add the following to your ~/.cargo/config, editing the path to x86_64-w64-mingw32-gcc
+# for your system (this is the path used on Arch systems)
+[target.x86_64-pc-windows-gnu]
+linker = "/usr/bin/x86_64-w64-mingw32-gcc"
+
+cargo build --target x86_64-pc-windows-gnu
+# ^ Currently fails because we need `vlc.dll` on the system path
+#   Adding this dependency is pretty painful so for now the
+#   workaround is to compile the windows .exe on windows systems.
+
+# TODO maybe abuse some container tech to get us good cross-compile-ability with Windorks?
+
+```
+
 
