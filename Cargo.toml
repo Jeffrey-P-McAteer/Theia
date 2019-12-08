@@ -7,4 +7,4 @@ edition = "2018"
 
 [dependencies]
 vlc-rs = "0.3"
-
+web-view = "0.5.4"
