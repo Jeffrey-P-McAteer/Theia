@@ -1,0 +1,79 @@
+
+# Theia
+
+> Theia is the Titan goddess of sight and the shining ether of the sky.
+> Her name was derived from the Greek words thea "sight" and theiazô "prophesy".
+
+Theia is a native binary which extends programs like `vlc` and `mpv` to provide
+a system for subscribing to, viewing, and searching various backends which host videos.
+
+Backends include:
+
+ - Youtube (planned)
+ - FTP server (planned)
+ - HTTP Server with some form of AutoIndex (planned)
+ - Local directory (planned)
+
+# Use
+
+## Windorks
+
+Double-click `theia.exe`.
+
+## Arch Linux
+
+Execute `theia` for a GUI.
+
+Pass one of the following arguments to do something you can add to your scripts:
+
+ - `theia proto://hostname:port/path` Open a GUI with the given backend loaded
+	- Protocols planned include `youtube://channel-name/video-name`, `ftp://host:port/directory/`, `file:///C:/some_videos/`.
+
+ - `theia diff proto://hostname:port/path` Prints any new content since the last time the given source was checked.
+ - `theia ls proto://hostname:port/path` Lists all content from the given backend (the path may be used to limit scope based on source; eg a single youtube channel).
+
+## macOS
+
+unimplemented but planned; need to learn if we'd need to package
+as a .app directory or if a native binary like windorks would work.
+
+# Dependencies
+
+The _goal_ is to have a single, stand-alone binary. Unfortunately with media
+processing being complex stuff and my development time being finite
+some compromises have been made.
+
+## Linux
+
+ - `libvlccore.so.9`
+ - `libsystemd.so.0` - I have no idea how that got in the binary and will have to investigate - your choice of init system should not affect a video player.
+
+## Windorks
+
+// TODO
+
+## macOS
+
+// TODO
+
+# Project Status
+
+Right now I'm playing around with all the GUI and video playback libraries offered
+by the rust ecosystem. I'm thinking of using `vlc` as a great all-around backend
+for playing content, `web-view` for the GUI, and I haven't thought about how
+we'll be storing data. Likely have one config directory under the user's home
+as well as a cache directory, probably going to use TOML for the config file.
+
+
+# Development
+
+Wanna put on a hard hat and help out?
+
+Make sure you have `rustc` and the `cargo` toolchain [https://rustup.rs/](https://rustup.rs/),
+download this repository of code somewhere on your system, and run:
+
+```
+cargo run --
+```
+
+
