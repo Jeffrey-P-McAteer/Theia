@@ -1,5 +1,5 @@
 
-use app_dirs::{AppInfo, AppDataType};
+use app_dirs::{AppDataType};
 use serde::{Serialize, Deserialize};
 use toml;
 
@@ -16,7 +16,7 @@ pub fn print_config_files() {
 
 pub fn get_config() -> Config {
 	let config_f = get_config_file();
-	if (config_f.as_path().exists()) {
+	if config_f.as_path().exists() {
 		let mut s = String::new();
 		File::open(config_f).unwrap().read_to_string(&mut s).unwrap();
 		return toml::from_str(&s).unwrap();
@@ -39,7 +39,7 @@ pub fn get_config_file() -> PathBuf {
 }
 
 pub fn get_cache_dir() -> PathBuf {
-	if let Ok(mut config_dir) = app_dirs::get_app_root(AppDataType::UserCache, &APP_INFO) {
+	if let Ok(config_dir) = app_dirs::get_app_root(AppDataType::UserCache, &APP_INFO) {
 		return config_dir;
 	}
 	else {
