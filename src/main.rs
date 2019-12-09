@@ -1,9 +1,19 @@
 
-use std::thread;
+use app_dirs::AppInfo;
+use structopt::StructOpt;
+
+pub const APP_INFO: AppInfo = AppInfo{name: "Theia", author: "jeffrey.p.mcateer"};
+
+mod config;
+mod args;
 
 fn main() {
-    //libvlc_experiment();
-    gui_experiment();
+    let args = args::Args::from_args();
+
+    println!("args = {:?}", args);
+    config::print_config_files();
+    println!("config = {:?}", config::get_config());
+
 }
 
 fn gui_experiment() {
@@ -23,7 +33,8 @@ fn gui_experiment() {
 }
 
 fn libvlc_experiment() {
-	use vlc::{Instance, Media, MediaPlayer};
+	use std::thread;
+    use vlc::{Instance, Media, MediaPlayer};
 
 	// Create an instance
     let instance = Instance::new().unwrap();
