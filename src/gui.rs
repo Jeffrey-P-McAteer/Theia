@@ -139,8 +139,49 @@ fn do_from_js(c: &config::Config, mrl: &Url, webview: &mut web_view::WebView<'_,
 			"youtube" | "yt" => {
 				_js_assign_body(
 					webview,
-					&format!("<em>TODO list: {}</em>", mrl.as_str() )
+					&format!("<script> window.location = \"https://youtube.com/results?search_query={}\"; </script>", &mrl.path()[1..] )
 				);
+				let handle = webview.handle();
+				thread::spawn(move || {
+					thread::sleep(time::Duration::from_millis(500));
+
+					handle.dispatch(|webview| {
+						webview.eval(r#"
+function addStyleString(str) {
+    var node = document.createElement('style');
+    node.innerHTML = str;
+    document.body.appendChild(node);
+}
+
+window.theia_int = setInterval(function() {
+	var results = document.querySelector('ytd-two-column-search-results-renderer.style-scope');
+	if (results) {
+		clearInterval(window.theia_int);
+		document.body.innerHTML = "";
+		document.body.appendChild(results);
+		// Modify results to go fullscreen
+		setTimeout(function() {
+			var links = document.getElementsByTagName("a");
+			for(var i=0; i<links.length; i++) {
+				console.log(links[i].href);
+				if (links[i].href.includes("/watch")) {
+					links[i].href = "https://www.youtube.com/embed/"+links[i].href.split("=")[1]+"?rel=0&autoplay=1";
+					console.log("https://www.youtube.com/embed/"+links[i].href.split("=")[1]+"?rel=0&autoplay=1");
+				}
+			}
+
+			addStyleString('body { all: initial; * { all: unset; } }');
+			addStyleString('@media (prefers-color-scheme: dark) { p, a, div, span, yt-formatted-string { color: white !important; } }');
+			addStyleString('@media (prefers-color-scheme: light) { p, a, div, span, yt-formatted-string { color: black !important; } }');
+
+		}, 500);
+	}
+}, 250);
+"#);
+						Ok(())
+					});
+
+				});
 			}
 			"file" => {
 				let options = glob::MatchOptions {
