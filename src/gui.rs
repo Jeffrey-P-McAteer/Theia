@@ -118,7 +118,7 @@ fn open_search_gui(c: &config::Config, mrl: &Url) {
 	// We already know mrl should be interpreted as a directory of some sort
 	println!("open_search_gui({:?})", mrl);
 	let webview = web_view::builder()
-        .title("Minimal webview example")
+        .title("Theia")
         .content(Content::Html( include_str!("html/gui.html") ))
         .size(800, 600)
         .resizable(true)
@@ -162,13 +162,17 @@ fn do_from_js(c: &config::Config, mrl: &Url, webview: &mut web_view::WebView<'_,
 				}
 
 				let mut html = String::new();
+				html += &format!(r#"
+<h2>{}</h2>
+<hr>
+"#, mrl.path() );
 				for file in vid_files {
 					html += &format!(r#"
 						<div class="vid-entry">
 							<p>{}</p>
 							<button onclick="external.invoke('play_file;'+'{}');">Play</button>
 						</div>
-					"#, &file, &file);
+					"#, &file[mrl.path().len()+1..], &file);
 				}
 
 				_js_assign_body(

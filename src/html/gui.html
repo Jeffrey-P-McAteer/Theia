@@ -10,7 +10,24 @@ setInterval(function() {
 		</script>
 		<style>
 			div.vid-entry p, div.vid-entry button {
-				display: inline;
+				display: inline-block;
+			}
+			div.vid-entry {
+				width: 100%;
+				border: 1px solid;
+				border-radius: 2pt;
+				display: inline-block;
+			}
+			div.vid-entry p {
+				vertical-align: baseline;
+				font-size: 16pt;
+				padding-left: 6pt;
+			}
+			div.vid-entry button {
+				float: right;
+				position: relative;
+				top: 6pt; /* fixes UI bug where button is clamped to top of div.vid-entry */
+				margin-right: 6pt;
 			}
 		</style>
 	</head>

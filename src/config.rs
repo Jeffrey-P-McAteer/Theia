@@ -19,12 +19,18 @@ pub fn get_config() -> Config {
 	if config_f.as_path().exists() {
 		let mut s = String::new();
 		File::open(config_f).unwrap().read_to_string(&mut s).unwrap();
-		return toml::from_str(&s).unwrap();
-	}
-	else {
-		Config {
-			name: "Words".to_string()
+		match toml::from_str(&s) {
+			Ok(config) => {
+				return config;
+			}
+			Err(e) => {
+				println!("Error parsing config file: {}", e);
+			}
 		}
+	}
+	// Default config when none given or there is an error
+	Config {
+		api_keys: vec![]
 	}
 }
 
@@ -49,6 +55,23 @@ pub fn get_cache_dir() -> PathBuf {
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Config {
-	pub name: String
+	pub api_keys: Vec<ApiKey>
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+pub struct ApiKey {
+	pub service: String,
+	pub key: String,
+}
+
+impl Config {
+	pub fn get_key(&self, service: &str) -> Option<String> {
+		for key in self.api_keys.iter() {
+			if key.service == service {
+				return Some(key.key.clone());
+			}
+		}
+		return None;
+	}
 }
 
