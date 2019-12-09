@@ -16,7 +16,7 @@ fn main() {
         return;
     }
 
-    gui::open(args.mrl);
+    gui::open(&config::get_config(), args.mrl);
 
 }
 

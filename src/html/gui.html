@@ -1,12 +1,19 @@
 <html>
 	<head>
 		<title>Theia</title>
+		<script>
+// We may want to push state from the app to the GUI;
+// this polling mechanism allows us to do that with minimal infrastructure hassle.
+setInterval(function() {
+	external.invoke("__poll__");
+}, 250);
+		</script>
 	</head>
 	<body>
 		<center><h2>TODO</h2></center>
-		<button onclick='external.invoke("test single string");'>Single String</button>
-		<button onclick='external.invoke(["s1", "s2", "s3"]);'>Multi String</button>
-		<button onclick='external.invoke(5.6);'>Number</button>
-		<button onclick='external.invoke("call");'>Call JS Code</button>
+
+		<script>
+			external.invoke('__main__');
+		</script>
 	</body>
 </html>

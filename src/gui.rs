@@ -3,12 +3,16 @@ use web_view::*;
 use vlc::{Instance, Media, MediaPlayer};
 use url::{Url};
 use regex::{Regex};
+use base64;
+use serde_json;
 
 use std::thread;
 use std::time;
 use std::fs;
 
-pub fn open(mrl: Option<Url>) {
+use crate::config;
+
+pub fn open(c: &config::Config, mrl: Option<Url>) {
 	if let Some(mrl) = mrl {
 		match mrl.scheme() {
 			"youtube" | "yt" => {
@@ -18,7 +22,7 @@ pub fn open(mrl: Option<Url>) {
 					);
 				}
 				else {
-					open_search_gui(&mrl); // we'd want to open the GUI to some channel overview listing videos
+					open_search_gui(c, &mrl); // we'd want to open the GUI to some channel overview listing videos
 				}
 			}
 			"file" => {
@@ -28,7 +32,7 @@ pub fn open(mrl: Option<Url>) {
 						open_vlc(mrl.as_str());
 					}
 					else {
-						open_search_gui(&mrl); // we'd want to open the GUI to search all videos in dir
+						open_search_gui(c, &mrl); // we'd want to open the GUI to search all videos in dir
 					}
 				}
 				else {
@@ -44,7 +48,7 @@ pub fn open(mrl: Option<Url>) {
 		// we'd want to open the GUI to a list of all backends w/ config options to
 		// add new backends and search for videos
 		let mrl = Url::parse("default://").unwrap();
-		open_search_gui(&mrl);
+		open_search_gui(c, &mrl);
 	}
 }
 
@@ -109,10 +113,10 @@ fn open_vlc(mrl: &str) {
 
 }
 
-fn open_search_gui(mrl: &Url) {
+fn open_search_gui(c: &config::Config, mrl: &Url) {
 	// We already know mrl should be interpreted as a directory of some sort
 	println!("open_search_gui({:?})", mrl);
-	web_view::builder()
+	let webview = web_view::builder()
         .title("Minimal webview example")
         .content(Content::Html( include_str!("html/gui.html") ))
         .size(800, 600)
@@ -120,14 +124,64 @@ fn open_search_gui(mrl: &Url) {
         .debug(true)
         .user_data(())
         .invoke_handler(|webview, arg| {
-        	println!("arg = {:?}", arg);
-
-        	if arg == "call" {
-        		webview.eval("document.body.innerHTML += \"<p>stuff</p>\";");
-        	}
-
+        	do_from_js(c, mrl, webview, arg);
         	Ok(())
         })
         .run()
         .unwrap();
+}
+
+fn do_from_js(c: &config::Config, mrl: &Url, webview: &mut web_view::WebView<'_, ()>, arg: &str) {
+	if arg == "__main__" {
+		// Setup routine to push state into JS app
+		match mrl.scheme() {
+			"youtube" | "yt" => {
+				_js_assign_body(
+					webview,
+					&format!("<em>TODO list: {}</em>", mrl.as_str() )
+				);
+			}
+			"file" => {
+				_js_assign_body(
+					webview,
+					&format!("<em>TODO list: {}</em>", mrl.as_str() )
+				);
+			}
+			"default" => {
+				let config_json = serde_json::to_string(c).unwrap();
+				let app_html = include_str!("html/default.html").replace("__CONFIG__", &config_json);
+				_js_assign_body(
+					webview,
+					&app_html
+				);
+			}
+			unk => {
+				_js_assign_body(
+					webview,
+					&format!("<em>Error: unknown scheme for URL: {}</em>", mrl.as_str() )
+				);
+			}
+		}
+		return;
+	}
+	if arg == "__poll__" {
+		return;
+	}
+
+	println!("do_from_js.arg={}", arg);
+	
+
+}
+
+fn _js_assign_body(webview: &mut web_view::WebView<'_, ()>, html: &str) {
+	// Encode to base64 to ensure string-iness
+	let b64_html = base64::encode(html);
+	webview.eval(&format!(r#"
+document.body.innerHTML = "";
+var range = document.createRange();
+document.body.appendChild(
+	range.createContextualFragment(atob("{}"))
+);
+"#, b64_html));
+	// document.body.innerHTML = atob(\"{}\"); does not run script tags
 }
