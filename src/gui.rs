@@ -119,9 +119,12 @@ fn open_search_gui(mrl: &Url) {
         .resizable(true)
         .debug(true)
         .user_data(())
-        .invoke_handler(|_webview, arg| {
-        	// _webview is always the data:// url given to the view
+        .invoke_handler(|webview, arg| {
         	println!("arg = {:?}", arg);
+
+        	if arg == "call" {
+        		webview.eval("document.body.innerHTML += \"<p>stuff</p>\";");
+        	}
 
         	Ok(())
         })
