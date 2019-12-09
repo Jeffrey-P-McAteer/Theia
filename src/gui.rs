@@ -115,8 +115,12 @@ fn open_vlc(mrl: &str) {
 }
 
 fn open_search_gui(c: &config::Config, mrl: &Url) {
+	use std::sync::atomic::{AtomicBool,Ordering};
 	// We already know mrl should be interpreted as a directory of some sort
 	println!("open_search_gui({:?})", mrl);
+	
+	let spawned_poller  = AtomicBool::new(false);
+
 	let webview = web_view::builder()
         .title("Theia")
         .content(Content::Html( include_str!("html/gui.html") ))
@@ -126,6 +130,41 @@ fn open_search_gui(c: &config::Config, mrl: &Url) {
         .user_data(())
         .invoke_handler(|webview, arg| {
         	do_from_js(c, mrl, webview, arg);
+
+        	if !spawned_poller.load(Ordering::SeqCst) {
+        		let handle = webview.handle();
+        		thread::spawn(move || {
+        			loop {
+        				// In leiu of a reasonable way to get 3rd-party domains to phone
+        				// home we instead spawn a thread to inject every possible modification every 250ms
+        				thread::sleep(time::Duration::from_millis(250));
+						handle.dispatch(|webview| {
+						webview.eval(r#"
+if (!window.addStyleString) {
+	window.addStyleString = function (str) {
+		var node = document.createElement('style');
+		node.innerHTML = str;
+		document.body.appendChild(node);
+	};
+}
+if (!window.theia_loaded) {
+	window.theia_loaded = true;
+	window.theia_int = setInterval(function() {
+		var results = document.querySelector('video.video-stream');
+		if (results) {
+			clearInterval(window.theia_int);
+			addStyleString('.ytp-pause-overlay, .ytp-chrome-bottom, .ytp-chrome-top { display: none !important; }');
+		}
+	}, 250);
+}
+"#);
+							Ok(())
+						});
+        			}
+        		});
+        		spawned_poller.store(false, Ordering::SeqCst);
+        	}
+
         	Ok(())
         })
         .run()
@@ -173,6 +212,7 @@ window.theia_int = setInterval(function() {
 			addStyleString('body { all: initial; * { all: unset; } }');
 			addStyleString('@media (prefers-color-scheme: dark) { p, a, div, span, yt-formatted-string { color: white !important; } }');
 			addStyleString('@media (prefers-color-scheme: light) { p, a, div, span, yt-formatted-string { color: black !important; } }');
+			addStyleString('.ytp-pause-overlay, .ytp-chrome-bottom, .ytp-chrome-top { display: none !important; }');
 
 		}, 500);
 	}
@@ -241,6 +281,7 @@ window.theia_int = setInterval(function() {
 	if arg == "__poll__" {
 		return;
 	}
+
 	if arg.starts_with("play_file;") {
 		let filename = format!("file://{}", &arg[10..]);
 		thread::spawn(move || {
