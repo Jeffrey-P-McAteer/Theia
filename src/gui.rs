@@ -5,6 +5,7 @@ use url::{Url};
 use regex::{Regex};
 use base64;
 use serde_json;
+use glob;
 
 use std::thread;
 use std::time;
@@ -142,9 +143,37 @@ fn do_from_js(c: &config::Config, mrl: &Url, webview: &mut web_view::WebView<'_,
 				);
 			}
 			"file" => {
+				let options = glob::MatchOptions {
+				    case_sensitive: false,
+				    require_literal_separator: false,
+				    require_literal_leading_dot: false,
+				};
+
+				let mut vid_files: Vec<String> = vec![];
+
+				for ext in &["mp4", "ogg", "avi", "flv", "wmv", "mov"] {
+					for entry in glob::glob_with( &format!("{}/**/*.{}", mrl.path(), ext), options ).expect("Failed to read glob pattern") {
+						if let Ok(entry) = entry {
+							vid_files.push(
+								entry.into_os_string().into_string().unwrap()
+							);
+						}
+					}
+				}
+
+				let mut html = String::new();
+				for file in vid_files {
+					html += &format!(r#"
+						<div class="vid-entry">
+							<p>{}</p>
+							<button onclick="external.invoke('play_file;'+'{}');">Play</button>
+						</div>
+					"#, &file, &file);
+				}
+
 				_js_assign_body(
 					webview,
-					&format!("<em>TODO list: {}</em>", mrl.as_str() )
+					&html
 				);
 			}
 			"default" => {
@@ -166,6 +195,12 @@ fn do_from_js(c: &config::Config, mrl: &Url, webview: &mut web_view::WebView<'_,
 	}
 	if arg == "__poll__" {
 		return;
+	}
+	if arg.starts_with("play_file;") {
+		let filename = format!("file://{}", &arg[10..]);
+		thread::spawn(move || {
+			open_vlc(&filename);
+		});
 	}
 
 	println!("do_from_js.arg={}", arg);
