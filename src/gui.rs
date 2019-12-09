@@ -18,7 +18,7 @@ pub fn open(mrl: Option<Url>) {
 					);
 				}
 				else {
-					std::unimplemented!(); // we'd want to open the GUI to some channel overview listing videos
+					open_search_gui(&mrl); // we'd want to open the GUI to some channel overview listing videos
 				}
 			}
 			"file" => {
@@ -28,7 +28,7 @@ pub fn open(mrl: Option<Url>) {
 						open_vlc(mrl.as_str());
 					}
 					else {
-						std::unimplemented!(); // we'd want to open the GUI to search all videos in dir
+						open_search_gui(&mrl); // we'd want to open the GUI to search all videos in dir
 					}
 				}
 				else {
@@ -43,7 +43,8 @@ pub fn open(mrl: Option<Url>) {
 	else {
 		// we'd want to open the GUI to a list of all backends w/ config options to
 		// add new backends and search for videos
-		std::unimplemented!();
+		let mrl = Url::parse("default://").unwrap();
+		open_search_gui(&mrl);
 	}
 }
 
@@ -106,4 +107,24 @@ fn open_vlc(mrl: &str) {
     	}
     }
 
+}
+
+fn open_search_gui(mrl: &Url) {
+	// We already know mrl should be interpreted as a directory of some sort
+	println!("open_search_gui({:?})", mrl);
+	web_view::builder()
+        .title("Minimal webview example")
+        .content(Content::Html( include_str!("html/gui.html") ))
+        .size(800, 600)
+        .resizable(true)
+        .debug(true)
+        .user_data(())
+        .invoke_handler(|_webview, arg| {
+        	// _webview is always the data:// url given to the view
+        	println!("arg = {:?}", arg);
+
+        	Ok(())
+        })
+        .run()
+        .unwrap();
 }
