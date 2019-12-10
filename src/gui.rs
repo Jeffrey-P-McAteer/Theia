@@ -130,16 +130,21 @@ fn open_search_gui(c: &config::Config, mrl: &Url) {
         .user_data(())
         .invoke_handler(|webview, arg| {
         	do_from_js(c, mrl, webview, arg);
+        	Ok(())
+        })
+        .build()
+        .unwrap();
 
-        	if !spawned_poller.load(Ordering::SeqCst) {
-        		let handle = webview.handle();
-        		thread::spawn(move || {
-        			loop {
-        				// In leiu of a reasonable way to get 3rd-party domains to phone
-        				// home we instead spawn a thread to inject every possible modification every 250ms
-        				thread::sleep(time::Duration::from_millis(250));
-						handle.dispatch(|webview| {
-						webview.eval(r#"
+    let handle = webview.handle();
+
+    thread::spawn(move || {
+		loop {
+			// In leiu of a reasonable way to get 3rd-party domains to phone
+			// home we instead spawn a thread to inject every possible modification every 250ms
+			thread::sleep(time::Duration::from_millis(250));
+			handle.dispatch(|webview| {
+			webview.eval(r#"
+// Define once, and only once, any utility functions.
 if (!window.addStyleString) {
 	window.addStyleString = function (str) {
 		var node = document.createElement('style');
@@ -147,28 +152,73 @@ if (!window.addStyleString) {
 		document.body.appendChild(node);
 	};
 }
+// Check if this is the first time the loop has executed on this page...
 if (!window.theia_loaded) {
+	// Prevent future loops from running...
 	window.theia_loaded = true;
+	// Schedule a task IN the browser to poll for app JS to load..
 	window.theia_int = setInterval(function() {
-		var results = document.querySelector('video.video-stream');
-		if (results) {
+		
+		// If this is a YT tab we will have one of these...
+		var yt_vid_play_app = document.querySelector('video.video-stream');
+		if (yt_vid_play_app) {
+			
+			// Stop polling for app JS load...
 			clearInterval(window.theia_int);
+
+			// Do the YT tab thing.
 			addStyleString('.ytp-pause-overlay, .ytp-chrome-bottom, .ytp-chrome-top { display: none !important; }');
 		}
+
+		// If this is a YT results page we will have one of these...
+		var yt_results_app = document.querySelector('ytd-search.style-scope');
+		if (yt_results_app) {
+
+			// Stop polling for app JS load...
+			clearInterval(window.theia_int);
+
+			// Do the YT search thing.
+			document.body.innerHTML = "";
+			document.body.appendChild(yt_results_app);
+			// Modify yt_results_app to go fullscreen on click
+			var app_fix_fn = function() {
+				var links = document.getElementsByTagName("a");
+				for(var i=0; i<links.length; i++) {
+					try {
+						console.log(links[i].href);
+						if (links[i].href.includes("/watch")) {
+							links[i].href = "https://www.youtube.com/embed/"+links[i].href.split("=")[1]+"?rel=0&autoplay=1";
+							console.log("https://www.youtube.com/embed/"+links[i].href.split("=")[1]+"?rel=0&autoplay=1");
+						}
+					}
+					catch (e) {
+						console.log(e);
+					}
+				}
+
+				addStyleString('body { all: initial; * { all: unset; } }');
+				addStyleString('@media (prefers-color-scheme: dark) { p, a, div, span, yt-formatted-string { color: white !important; } }');
+				addStyleString('@media (prefers-color-scheme: light) { p, a, div, span, yt-formatted-string { color: black !important; } }');
+				addStyleString('.ytp-pause-overlay, .ytp-chrome-bottom, .ytp-chrome-top { display: none !important; }');
+
+			};
+			// Schedule quickly...
+			setTimeout(app_fix_fn, 20);
+			// And again in 1.2 seconds
+			setTimeout(app_fix_fn, 1200);
+		}
+
+
 	}, 250);
 }
 "#);
-							Ok(())
-						});
-        			}
-        		});
-        		spawned_poller.store(false, Ordering::SeqCst);
-        	}
+				Ok(())
+			});
+		}
+	});
 
-        	Ok(())
-        })
-        .run()
-        .unwrap();
+    webview.run();
+
 }
 
 fn do_from_js(c: &config::Config, mrl: &Url, webview: &mut web_view::WebView<'_, ()>, arg: &str) {
@@ -180,48 +230,7 @@ fn do_from_js(c: &config::Config, mrl: &Url, webview: &mut web_view::WebView<'_,
 					webview,
 					&format!("<script> window.location = \"https://youtube.com/results?search_query={}\"; </script>", &mrl.path()[1..] )
 				);
-				let handle = webview.handle();
-				thread::spawn(move || {
-					thread::sleep(time::Duration::from_millis(500));
 
-					handle.dispatch(|webview| {
-						webview.eval(r#"
-function addStyleString(str) {
-    var node = document.createElement('style');
-    node.innerHTML = str;
-    document.body.appendChild(node);
-}
-
-window.theia_int = setInterval(function() {
-	var results = document.querySelector('ytd-two-column-search-results-renderer.style-scope');
-	if (results) {
-		clearInterval(window.theia_int);
-		document.body.innerHTML = "";
-		document.body.appendChild(results);
-		// Modify results to go fullscreen
-		setTimeout(function() {
-			var links = document.getElementsByTagName("a");
-			for(var i=0; i<links.length; i++) {
-				console.log(links[i].href);
-				if (links[i].href.includes("/watch")) {
-					links[i].href = "https://www.youtube.com/embed/"+links[i].href.split("=")[1]+"?rel=0&autoplay=1";
-					console.log("https://www.youtube.com/embed/"+links[i].href.split("=")[1]+"?rel=0&autoplay=1");
-				}
-			}
-
-			addStyleString('body { all: initial; * { all: unset; } }');
-			addStyleString('@media (prefers-color-scheme: dark) { p, a, div, span, yt-formatted-string { color: white !important; } }');
-			addStyleString('@media (prefers-color-scheme: light) { p, a, div, span, yt-formatted-string { color: black !important; } }');
-			addStyleString('.ytp-pause-overlay, .ytp-chrome-bottom, .ytp-chrome-top { display: none !important; }');
-
-		}, 500);
-	}
-}, 250);
-"#);
-						Ok(())
-					});
-
-				});
 			}
 			"file" => {
 				let options = glob::MatchOptions {
