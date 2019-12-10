@@ -6,6 +6,7 @@ use regex::{Regex};
 use base64;
 use serde_json;
 use glob;
+use nfd;
 
 use std::thread;
 use std::time;
@@ -115,12 +116,9 @@ fn open_vlc(mrl: &str) {
 }
 
 fn open_search_gui(c: &config::Config, mrl: &Url) {
-	use std::sync::atomic::{AtomicBool,Ordering};
 	// We already know mrl should be interpreted as a directory of some sort
 	println!("open_search_gui({:?})", mrl);
 	
-	let spawned_poller  = AtomicBool::new(false);
-
 	let webview = web_view::builder()
         .title("Theia")
         .content(Content::Html( include_str!("html/gui.html") ))
@@ -219,6 +217,10 @@ if (!window.theia_loaded) {
 
     webview.run();
 
+    loop {
+    	// We may have more threads running... TODO ctrl+c is not viable thread management
+    }
+
 }
 
 fn do_from_js(c: &config::Config, mrl: &Url, webview: &mut web_view::WebView<'_, ()>, arg: &str) {
@@ -226,11 +228,8 @@ fn do_from_js(c: &config::Config, mrl: &Url, webview: &mut web_view::WebView<'_,
 		// Setup routine to push state into JS app
 		match mrl.scheme() {
 			"youtube" | "yt" => {
-				_js_assign_body(
-					webview,
-					&format!("<script> window.location = \"https://youtube.com/results?search_query={}\"; </script>", &mrl.path()[1..] )
-				);
-
+				let b64_query = base64::encode(&mrl.path()[1..]);
+				webview.eval(&format!("window.location = \"https://youtube.com/results?search_query=\"+atob(\"{}\");", &b64_query));
 			}
 			"file" => {
 				let options = glob::MatchOptions {
@@ -287,15 +286,31 @@ fn do_from_js(c: &config::Config, mrl: &Url, webview: &mut web_view::WebView<'_,
 		}
 		return;
 	}
-	if arg == "__poll__" {
-		return;
+
+	if arg.starts_with("open_file;") {
+		if let Ok(nfd::Response::Okay(result)) = nfd::open_file_dialog(None, None) {
+			thread::spawn(move || {
+				open_vlc(&format!("file://{}", result));
+			});
+		}
 	}
 
-	if arg.starts_with("play_file;") {
-		let filename = format!("file://{}", &arg[10..]);
-		thread::spawn(move || {
-			open_vlc(&filename);
-		});
+	if arg.starts_with("open_dir;") {
+		if let Ok(nfd::Response::Okay(result)) = nfd::open_file_dialog(None, None) {
+			// First close _this_ web view
+			webview.terminate();
+			let c = c.clone();
+			thread::spawn(move || {
+				let dir_url: Url = format!("file://{}", result).parse().unwrap();
+				open_search_gui(&c, &dir_url);
+			});
+		}
+	}
+
+	if arg.starts_with("search_yt;") {
+		let query = format!("{}", &arg[10..]);
+		let b64_query = base64::encode(&query);
+		webview.eval(&format!("window.location = \"https://youtube.com/results?search_query=\"+atob(\"{}\");", &b64_query));
 	}
 
 	println!("do_from_js.arg={}", arg);

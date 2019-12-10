@@ -3,9 +3,15 @@
 window.config = __CONFIG__;
 </script>
 
-<h2>Default</h2>
+<div class="backend">
+	<p style="display: inline;">Youtube</p>
+	<input id="yt_q" type="text" placeholder="Search Youtube..." size="35">
+	<button onclick="external.invoke('search_yt;'+document.querySelector('#yt_q').value);" style="top:1pt;">Search</button>
+</div>
 
-<pre>
-__CONFIG__
-</pre>
+<div class="backend">
+	<p style="display: inline;">Local File</p>
+	<button onclick="external.invoke('open_file;');" style="top:1pt;">Open File</button>
+	<button onclick="external.invoke('open_dir;');" style="top:1pt;">Open Directory</button>
+</div>
 

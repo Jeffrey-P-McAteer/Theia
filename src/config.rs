@@ -53,12 +53,12 @@ pub fn get_cache_dir() -> PathBuf {
 	}
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Config {
 	pub api_keys: Vec<ApiKey>
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct ApiKey {
 	pub service: String,
 	pub key: String,
